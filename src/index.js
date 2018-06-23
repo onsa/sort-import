@@ -12,17 +12,9 @@ if (!fs.existsSync(projectPath + 'tslint.json')) {
 
 // retrieve maximum line length from tslint.json
 var maxLineLength = require(projectPath + 'tslint.json').rules['max-line-length'];
+
 // retrieve indentation from tslint.json
-var indentationRule = require(projectPath + 'tslint.json').rules['indent'];
-if (!indentationRule || !indentationRule.length) {
-	throw new Error('No indentation rule found in tslint.json.');
-}
-var indent;
-if (indentationRule[1] === 'tabs') {
-	indent = '\t';
-} else if (indentationRule[1] === 'spaces') {
-	indent = ' '.repeat(indentationRule[2] || 2);
-}
+var indent = getIndentation(projectPath);
 
 // import import separator comments
 var comment = require('./comments');
@@ -36,6 +28,26 @@ var sortOptions = {
 };
 
 module.exports.run = main;
+
+/**
+ * check indentation configuration in tslint.json
+ *
+ * @param {projectPath} req
+ * @return string
+ */
+function getIndentation(projectPath) {
+	var indentationRule = require(projectPath + 'tslint.json').rules['indent'];
+	if (!indentationRule || !indentationRule.length) {
+		throw new Error('No indentation rule found in tslint.json.');
+	}
+	var indent;
+	if (indentationRule[1] === 'tabs') {
+		indent = '\t';
+	} else if (indentationRule[1] === 'spaces') {
+		indent = ' '.repeat(indentationRule[2] || 2);
+	}
+	return indent;
+}
 
 /**
  * recursively traverse directory structure and call processFile on each file
