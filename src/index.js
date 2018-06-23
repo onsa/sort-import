@@ -20,7 +20,7 @@ var indent = getIndentation(projectPath);
 var quote = getQuote();
 
 // retrieve base url
-var baseUrl = require(projectPath + 'tsconfig.json').compilerOptions.baseUrl || 'src/app';
+var baseUrl = require(projectPath + 'tsconfig.json').compilerOptions.baseUrl || 'src';
 
 // import import separator comments
 var comment = require('./comments');

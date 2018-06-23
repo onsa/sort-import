@@ -5,7 +5,7 @@ This module sorts import statements alphabetically.
 
 ## Configuration
 
-Import statements are sorted into three categories (angular, application and thirs party) based on the source path. Application paths are checked against the `baseUrl` specified in the `tsconfig.json` found at the application root. If no base is provided, it defaults to `src/app`.
+Import statements are sorted into three categories (angular, application and thirs party) based on the source path. Application paths are checked against the `baseUrl` specified in the `tsconfig.json` found at the application root. If no base is provided, it defaults to `src`.
 
 In order to format sorted imports properly, a `tslint.json` file at the project root is parsed for the `indent` rule. In case of `space` indentation, the default length is 2. This can be overridden by a third value in the rule array as described by [TSLint](https://palantir.github.io/tslint/rules/indent/).
 
