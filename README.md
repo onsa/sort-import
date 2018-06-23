@@ -9,6 +9,8 @@ Import statements are sorted into three categories (angular, application and thi
 
 In order to format sorted imports properly, a `tslint.json` file at the project root is parsed for the `indent` rule. In case of `space` indentation, the default length is 2. This can be overridden by a third value in the rule array as described by [TSLint](https://palantir.github.io/tslint/rules/indent/).
 
+If `tslint.json` enforces the type of quotation marks, they are fixed during the sorting process.
+
 ## Run
 
 - Run `npm run sort-import [path/to/target]` from the application root.

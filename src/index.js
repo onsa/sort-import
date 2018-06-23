@@ -16,6 +16,9 @@ var maxLineLength = require(projectPath + 'tslint.json').rules['max-line-length'
 // retrieve indentation from tslint.json
 var indent = getIndentation(projectPath);
 
+// check quotemark
+var quote = getQuote();
+
 // retrieve base url
 var baseUrl = require(projectPath + 'tsconfig.json').compilerOptions.baseUrl || 'src/app';
 
@@ -50,6 +53,22 @@ function getIndentation(projectPath) {
 		indent = ' '.repeat(indentationRule[2] || 2);
 	}
 	return indent;
+}
+
+/**
+ * check quotemark configuration in tslint.json
+ *
+ * @return string
+ */
+function getQuote() {
+	var quoteRule = require(projectPath + 'tslint.json').rules.quotemark;
+	if (!quoteRule || !quoteRule[0]) {
+		return;
+	} else if (quoteRule[1] == 'single') {
+		return "'";
+	} else if (quoteRule[1] == 'double') {
+		return '"';
+	}
 }
 
 /**
@@ -269,15 +288,24 @@ function sortImportLines(importLines) {
 	};
 	// loop over import lines
   for (var i = 0; i < importLines.length; i++) {
-		// change " to '
-		importLines[i][0] = importLines[i][0].replace(/"/g, "'");
+		var localQuote;
+		if (!!quote) {
+			// fix quotation marks
+			importLines[i][0] = importLines[i][0].replace(/["']/g, quote);
+			localQuote = quote;
+		} else {
+			// find line-specific quotation mark
+			localQuote = importLines[i][0].search('"') > -1 ? '"' : "'";
+		}
+
 		// sort features within and limit their length if necessary
 		importLines[i][0] = sortFeatures(importLines[i][0]);
 		importLines[i][0] = limitLine(importLines[i][0]);
 		// sort them into three categories
 		var match;
-		if (importLines[i][0].search(/'.*'/) > -1) {
-			match = importLines[i][0].match(/'.*'/)[0].replace("'", "");
+		var quoteSearch = new RegExp(localQuote + '.*' + localQuote);
+		if (importLines[i][0].search(quoteSearch) > -1) {
+			match = importLines[i][0].match(quoteSearch)[0].replace(/["']/g, "");
 		}
 		if (match.substring(0, 8) == '@angular') {
       importGroups.angular.push(importLines[i]);
