@@ -16,6 +16,9 @@ var maxLineLength = require(projectPath + 'tslint.json').rules['max-line-length'
 // retrieve indentation from tslint.json
 var indent = getIndentation(projectPath);
 
+// retrieve base url
+var baseUrl = require(projectPath + 'tsconfig.json').compilerOptions.baseUrl || 'src/app';
+
 // import import separator comments
 var comment = require('./comments');
 // declare global end of line character & comments
@@ -36,7 +39,7 @@ module.exports.run = main;
  * @return string
  */
 function getIndentation(projectPath) {
-	var indentationRule = require(projectPath + 'tslint.json').rules['indent'];
+	var indentationRule = require(projectPath + 'tslint.json').rules.indent;
 	if (!indentationRule || !indentationRule.length) {
 		throw new Error('No indentation rule found in tslint.json.');
 	}
@@ -278,8 +281,7 @@ function sortImportLines(importLines) {
 		}
 		if (match.substring(0, 8) == '@angular') {
       importGroups.angular.push(importLines[i]);
-    } else if (match.substring(0, 1) == '.' ||
-               match.substring(0, 3) == 'app') {
+    } else if (match.substring(0, 1) == '.' || checkApplicationPath(match)) {
       importGroups.application.push(importLines[i]);
     } else {
       importGroups.thirdParty.push(importLines[i]);
@@ -307,6 +309,28 @@ function sortImportLines(importLines) {
 	.concat(importGroups.thirdParty.map(function(line) {
 		return readdComment(line, lineNumbers)
 	}));
+}
+
+
+/**
+ * Check if import source is within the application
+ *
+ * @param {line} req
+ * @return string
+ */
+function checkApplicationPath(url) {
+	var directory = url.substring(0, url.lastIndexOf(path.sep));
+	var pathArray = (projectPath + baseUrl + path.sep + directory).split(path.sep);
+	var cleanPathArray = [];
+	pathArray.forEach(function(item, index) {
+		if (item == '..') {
+			cleanPathArray.pop();
+		} else if(item != '.') {
+			cleanPathArray.push(item);
+		}
+	});
+	var pathToCheck = cleanPathArray.join(path.sep);
+	return fs.existsSync(pathToCheck);
 }
 
 /**
