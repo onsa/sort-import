@@ -26,7 +26,19 @@ Create or edit `.save.cson` at your application root and add the following line:
 
 `"**/*.ts" : "npm run sort-import ${dir}/${file}"`  
 
-- For Visual Studio, see [Run on Save](https://marketplace.visualstudio.com/items?itemName=emeraldwalk.RunOnSave).
+- For Visual Studio Code, use [Save and Run](https://marketplace.visualstudio.com/items?itemName=wk-j.save-and-run).
+Go to Preferences -> Open Settings (JSON) and add the following configuration in curly braces:
+
+```javascript
+"saveAndRun": {
+    "commands": [
+        {
+            "match": "\\.ts$",
+            "cmd": "npm run sort-import ${file}"
+        }
+    ]
+}
+```
 
 ## Note
 
