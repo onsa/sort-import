@@ -344,11 +344,16 @@ function sortImportLines(importLines) {
  * Check if import source is within the application
  *
  * @param {line} req
- * @return string
+ * @return boolean
  */
 function checkApplicationPath(url) {
 	var directory = url.substring(0, url.lastIndexOf(path.sep));
-	var pathArray = (projectPath + baseUrl + path.sep + directory).split(path.sep);
+	var pathArray;
+	if (!directory || !directory.length) {
+		pathArray = (projectPath + baseUrl + path.sep + directory + url + '.ts').split(path.sep);
+	} else {
+		pathArray = (projectPath + baseUrl + path.sep + directory).split(path.sep);
+	}
 	var cleanPathArray = [];
 	pathArray.forEach(function(item, index) {
 		if (item == '..') {
