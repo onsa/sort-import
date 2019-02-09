@@ -20,5 +20,5 @@
     "postinstall": "node src/postinstall.js",
     "postuninstall": "node src/postuninstall.js"
   },
-  "version": "1.2.4"
+  "version": "1.2.5"
 }

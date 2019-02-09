@@ -436,9 +436,9 @@ function getLineNumbers(importLines) {
 function limitLine(line) {
 	if (maxLineLength[0] && line.length > maxLineLength[1]) {
 		line = line
-			.replace(/{\s*/, '{' + EOLChar + '\t')
+			.replace(/{\s*/, '{' + EOLChar + indent)
 			.replace(/\s*}/, EOLChar + '}')
-			.replace(/,\s*/g, ',' + EOLChar + '\t');
+			.replace(/,\s*/g, ',' + EOLChar + indent);
 	}
 	return line;
 }
