@@ -4,23 +4,42 @@
 var fs = require('fs');
 var path = require('path');
 // save project path
-var projectPath = path.normalize(__dirname.split('node_modules')[0]);
+var projectPath;
+if (__dirname.indexOf('node_modules') === -1) {
+    projectPath = path.normalize(__dirname.slice(0, __dirname.lastIndexOf('src')));
+} else {
+    projectPath = path.normalize(__dirname.split('node_modules')[0]);
+}
 // check for tslint.json
-if (!fs.existsSync(projectPath + 'tslint.json')) {
-    throw new Error('No tslint.json found at project root.');
+var linterConfig;
+if (fs.existsSync(projectPath + 'tslint.json')) {
+    linterConfig = require(projectPath + 'tslint.json');
+} else {
+    linterConfig = {
+        rules: {
+            'max-line-length': 140,
+            indent: [true, 'spaces', 4],
+            quotemark: [true, 'single']
+        }
+    };
 }
 
 // retrieve maximum line length from tslint.json
-var maxLineLength = require(projectPath + 'tslint.json').rules['max-line-length'];
+var maxLineLength = linterConfig.rules['max-line-length'];
 
 // retrieve indentation from tslint.json
-var indent = getIndentation(projectPath);
+var indent = getIndentation();
 
 // check quotemark
 var quote = getQuote();
 
 // retrieve base url
-var baseUrl = require(projectPath + 'tsconfig.json').compilerOptions.baseUrl || 'src';
+var baseUrl;
+if (fs.existsSync(projectPath + 'tsconfig.json')) {
+    baseUrl = require(projectPath + 'tsconfig.json').compilerOptions.baseUrl || 'src';
+} else {
+    baseUrl = 'test';
+}
 
 // import import separator comments
 var comment = require('./comments');
@@ -34,15 +53,15 @@ var sortOptions = {
 };
 
 module.exports.run = main;
+module.exports.parseInput = parseInput;
 
 /**
  * check indentation configuration in tslint.json
  *
- * @param {projectPath} req
  * @return string
  */
-function getIndentation(projectPath) {
-    var indentationRule = require(projectPath + 'tslint.json').rules.indent;
+function getIndentation() {
+    var indentationRule = linterConfig.rules.indent;
     if (!indentationRule || !indentationRule.length) {
         throw new Error('No indentation rule found in tslint.json.');
     }
@@ -61,7 +80,7 @@ function getIndentation(projectPath) {
  * @return string
  */
 function getQuote() {
-    var quoteRule = require(projectPath + 'tslint.json').rules.quotemark;
+    var quoteRule = linterConfig.rules.quotemark;
     if (!quoteRule || !quoteRule[0]) {
         return;
     } else if (quoteRule[1] == 'single') {
@@ -166,16 +185,22 @@ function parseInput(input) {
 function getImportEnd(lines) {
     var importEnd = -1;
     for (var i = 0; i < lines.length; i++) {
-        // match 'import ' and 'from ...'
-        if (lines[i].trim().replace(EOLChar, '').length && (
-                lines[i].trim().indexOf('import ') === 0 ||
-                lines[i].trim().indexOf('export ') === 0 ||
-                lines[i].trim().match(/}\s*from\s*[\'\"].*[\'\"];?$/))
-            ) {
+        var trimmedLine = lines[i].trim();
+        if (trimmedLine.replace(EOLChar, '').length && (
+            // match 'import '
+            trimmedLine.indexOf('import ') === 0 ||
+            // match 'export ' when it's not a new declaration
+            (
+                trimmedLine.indexOf('export ') === 0 &&
+                trimmedLine.match(/export\s*([^{}]*\sfrom\s|{)/)
+            ) ||
+            // match 'from'
+            trimmedLine.match(/}\s*from\s*[\'\"].*[\'\"];?$/))
+        ) {
             importEnd = i;
             // match PascalCased expression
         } else if (
-            lines[i].trim().match(/^([A-Z]{1}[a-zA-Z_]*)*,?$/)
+            trimmedLine.match(/^([A-Z]{1}[a-zA-Z_]*)*,?$/)
         ) {
             // go back to last non-PascalCased line
             var j = i;
@@ -205,7 +230,8 @@ function getComments(lines, importEnd, comments) {
         if (lines[i].trim().indexOf('//') === 0) {
             if (comment.angular !== lines[i].trim() &&
                 comment.application !== lines[i].trim() &&
-                comment.thirdParty !== lines[i].trim()) {
+                comment.thirdParty !== lines[i].trim()
+            ) {
                 comments[i + 1] = lines[i].trim();
             }
         } else if (
@@ -269,7 +295,7 @@ function pickNonImportLines(lines, importEnd, nonImportLines) {
     for (var i = importEnd; i < lines.length; i++) {
         nonImportLines.push(lines[i]);
     }
-    if (!!nonImportLines[0].trim().length) {
+    if (!!nonImportLines.length && !!nonImportLines[0].trim().length) {
         nonImportLines.unshift(EOLChar);
     }
 }
@@ -404,7 +430,7 @@ function readdComment(line, lineNumbers) {
     // if not an import group comment
     if (line[1] !== -1) {
         // get old index of previous import line
-        var lastImportLineNumber = lineNumbers[lineNumbers.indexOf(line[1]) - 1];
+        var lastImportLineNumber = lineNumbers[lineNumbers.indexOf(line[1]) - 1] || 0;
         for (var i = line[1]; i > lastImportLineNumber; i--) {
             // if comment exists between the two, prepend line with it
             if (!!comments[i]) {
