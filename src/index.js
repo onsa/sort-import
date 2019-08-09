@@ -33,12 +33,24 @@ var indent = getIndentation();
 // check quotemark
 var quote = getQuote();
 
-// retrieve base url
+// retrieve base url and aliases
 var baseUrl;
+var aliases;
+// if tsconfig.json exists
 if (fs.existsSync(projectPath + 'tsconfig.json')) {
-    baseUrl = require(projectPath + 'tsconfig.json').compilerOptions.baseUrl || 'src';
+    var options = require(projectPath + 'tsconfig.json').compilerOptions;
+    baseUrl = options.baseUrl || 'src';
+    aliases = (Object.keys(options.paths) || [])
+        .filter(
+            (alias) => alias.substr(alias.length - 2) === '/*'
+        )
+        .map(
+            (alias) => alias.substr(0, alias.length - 2)
+        );
+// without tsconfig.json assume it's a testing scenario
 } else {
     baseUrl = 'test';
+    aliases = ['some-library'];
 }
 
 // import import separator comments
@@ -123,9 +135,7 @@ function main(directory) {
  * @param {fileName} req
  */
 function processFile(directory, fileName) {
-    var splitFileName = fileName.split('.');
-    var extension = splitFileName[splitFileName.length - 1];
-    if (extension === 'ts') {
+    if (fileName.endsWith('.ts') && !fileName.endsWith('.d.ts')) {
         fs.readFile(directory + path.sep + fileName, 'utf8', function (error, data) {
             if (error) {
                 throw (error);
@@ -337,7 +347,11 @@ function sortImportLines(importLines) {
         }
         if (match.substring(0, 8) == '@angular') {
             importGroups.angular.push(importLines[i]);
-        } else if (match.substring(0, 1) == '.' || checkApplicationPath(match)) {
+        } else if (
+            match.substring(0, 1) == '.' ||
+            aliases.indexOf(match.split(path.sep)[0]) > -1 ||
+            checkApplicationPath(match)
+        ) {
             importGroups.application.push(importLines[i]);
         } else {
             importGroups.thirdParty.push(importLines[i]);

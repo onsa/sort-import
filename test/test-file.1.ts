@@ -7,7 +7,7 @@ import { DApplicationModule } from './test-file.1';
 // comment #4
 import { CAngularModule, LAngularModule, DAngularModule } from '@angular/other-module';
 // comment #5
-import { ALibraryModule, CLibraryModule } from 'other-library';
+import { ALibraryModule, CLibraryModule } from 'third-party-library';
 // comment #6
 import {
     HApplicationModule,
