@@ -36,9 +36,17 @@ var quote = getQuote();
 // retrieve base url and aliases
 var baseUrl;
 var aliases;
-// if tsconfig.json exists
-if (fs.existsSync(projectPath + 'tsconfig.json')) {
-    var options = require(projectPath + 'tsconfig.json').compilerOptions;
+
+var configPath;
+if (fs.existsSync(projectPath + 'tsconfig.base.json')) {
+    configPath = projectPath + 'tsconfig.base.json';
+} else if (fs.existsSync(projectPath + 'tsconfig.json')) {
+    configPath = projectPath + 'tsconfig.json';
+}
+
+// if tsconfig(.base).json exists
+if (!!configPath) {
+    var options = require(configPath).compilerOptions;
     baseUrl = options.baseUrl || 'src';
     aliases = (Object.keys(options.paths) || [])
         .filter(
@@ -47,7 +55,7 @@ if (fs.existsSync(projectPath + 'tsconfig.json')) {
         .map(
             (alias) => alias.substr(0, alias.length - 2)
         );
-// without tsconfig.json assume it's a testing scenario
+// otherwise assume it's a testing scenario
 } else {
     baseUrl = 'test';
     aliases = ['some-library'];
