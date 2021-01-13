@@ -5,7 +5,14 @@ export { AAngularModule, GAngularModule, ZAngularModule } from '@angular/some-mo
 export { CAngularModule, DAngularModule, LAngularModule } from '@angular/other-module';
 //  Application imports
 // comment #5
-export { AApplicationModule, EApplicationModule, HApplicationModule, NApplicationModule, OApplicationModule, QApplicationModule } from 'test-file.1';
+export {
+    AApplicationModule,
+    EApplicationModule,
+    HApplicationModule,
+    NApplicationModule,
+    OApplicationModule,
+    QApplicationModule
+} from 'test-file.1';
 // comment #2
 export { DApplicationModule } from './test-file.1';
 export SApplicationModule from './test-file.1';

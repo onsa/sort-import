@@ -5,7 +5,14 @@ import { AAngularModule, GAngularModule, ZAngularModule } from '@angular/some-mo
 import { CAngularModule, DAngularModule, LAngularModule } from '@angular/other-module';
 //  Application imports
 // comment #6
-import { AApplicationModule, EApplicationModule, HApplicationModule, NApplicationModule, OApplicationModule, QApplicationModule } from 'test-file.1';
+import {
+    AApplicationModule,
+    EApplicationModule,
+    HApplicationModule,
+    NApplicationModule,
+    OApplicationModule,
+    QApplicationModule
+} from 'test-file.1';
 // comment #1
 import { BLibraryModule } from 'some-library';
 // comment #3

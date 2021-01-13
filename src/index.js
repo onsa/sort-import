@@ -10,24 +10,21 @@ if (__dirname.indexOf('node_modules') === -1) {
 } else {
     projectPath = path.normalize(__dirname.split('node_modules')[0]);
 }
-// check for tslint.json
+// check for eslintrc.js
 var linterConfig;
-if (fs.existsSync(projectPath + 'tslint.json')) {
-    linterConfig = require(projectPath + 'tslint.json');
+if (fs.existsSync(projectPath + '.eslintrc.js')) {
+    linterConfig = require(projectPath + '.eslintrc.js');
 } else {
     linterConfig = {
         rules: {
-            'max-line-length': 140,
-            indent: [true, 'spaces', 4],
-            quotemark: [true, 'single']
+            'max-len': [ "error", { "code": 140 } ],
+            'indent': [ 'error', 4 ],
+            quotes: [ 'error', 'single' ]
         }
     };
 }
 
-// retrieve maximum line length from tslint.json
-var maxLineLength = linterConfig.rules['max-line-length'];
-
-// retrieve indentation from tslint.json
+// retrieve indentation from eslintrc.js
 var indent = getIndentation();
 
 // check quotemark
@@ -76,32 +73,34 @@ module.exports.run = main;
 module.exports.parseInput = parseInput;
 
 /**
- * check indentation configuration in tslint.json
+ * check indentation configuration in eslintrc.js
  *
  * @return string
  */
 function getIndentation() {
-    var indentationRule = linterConfig.rules.indent;
+    var indentationRule = linterConfig.rules['@typescript-eslint/indent'] || linterConfig.rules.indent;
     if (!indentationRule || !indentationRule.length) {
-        throw new Error('No indentation rule found in tslint.json.');
+        throw new Error('No indentation rule found in eslintrc.js.');
     }
     var indent;
-    if (indentationRule[1] === 'tabs') {
+    if (typeof indentationRule === 'string' || indentationRule[0] !== 'error') {
+        indent = ' '.repeat(4);
+    } else if (indentationRule[1] === 'tab') {
         indent = '\t';
-    } else if (indentationRule[1] === 'spaces') {
-        indent = ' '.repeat(indentationRule[2] || 2);
+    } else if (typeof indentationRule[1] === 'number') {
+        indent = ' '.repeat(indentationRule[1]);
     }
     return indent;
 }
 
 /**
- * check quotemark configuration in tslint.json
+ * check quotemark configuration in eslintrc.js
  *
  * @return string
  */
 function getQuote() {
-    var quoteRule = linterConfig.rules.quotemark;
-    if (!quoteRule || !quoteRule[0]) {
+    var quoteRule = linterConfig.rules.quotes;
+    if (!quoteRule || quoteRule[0] !== 'error') {
         return;
     } else if (quoteRule[1] == 'single') {
         return "'";
@@ -478,13 +477,14 @@ function getLineNumbers(importLines) {
 }
 
 /**
- * Split line if longer than maximum defined in tslint.json
+ * Split line if longer than maximum defined in eslintrc.js
  *
  * @param {line} req
  * @return string
  */
 function limitLine(line) {
-    if (maxLineLength[0] && line.length > maxLineLength[1]) {
+    var maxLineLength = linterConfig.rules['max-len'];
+    if (maxLineLength[0] === 'error' && line.length > maxLineLength[1].code) {
         line = line
             .replace(/{\s*/, '{' + EOLChar + indent)
             .replace(/\s*}/, EOLChar + '}')
