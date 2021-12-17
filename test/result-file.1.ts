@@ -6,18 +6,18 @@ import { CAngularModule, DAngularModule, LAngularModule } from '@angular/other-m
 //  Application imports
 // comment #6
 import {
-    AApplicationModule,
-    EApplicationModule,
-    HApplicationModule,
-    NApplicationModule,
-    OApplicationModule,
-    QApplicationModule
-} from 'test-file.1';
+  AApplicationModule,
+  EApplicationModule,
+  HApplicationModule,
+  NApplicationModule,
+  OApplicationModule,
+  QApplicationModule
+} from './test-file.2';
 // comment #1
 import { BLibraryModule } from 'some-library';
 // comment #3
 import { DApplicationModule } from './test-file.1';
-//  Third party imports
+//  Other imports
 // comment #5
 import { ALibraryModule, CLibraryModule } from 'third-party-library';
 

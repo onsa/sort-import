@@ -21,9 +21,10 @@
     "postinstall": "node src/postinstall.js",
     "postuninstall": "node src/postuninstall.js"
   },
-  "version": "1.3.0",
+  "version": "1.4.3",
   "devDependencies": {
     "chai": "^4.2.0",
+    "js-yaml": "^4.1.0",
     "mocha": "^6.1.4"
   }
 }

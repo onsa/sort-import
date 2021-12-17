@@ -1,89 +1,125 @@
 'use strict';
 
-// use file system & path modules
-var fs = require('fs');
-var path = require('path');
-// save project path
-var projectPath;
-if (__dirname.indexOf('node_modules') === -1) {
-    projectPath = path.normalize(__dirname.slice(0, __dirname.lastIndexOf('src')));
-} else {
-    projectPath = path.normalize(__dirname.split('node_modules')[0]);
-}
-// check for eslintrc.js
-var linterConfig;
-if (fs.existsSync(projectPath + '.eslintrc.js')) {
-    linterConfig = require(projectPath + '.eslintrc.js');
-} else {
-    linterConfig = {
-        rules: {
-            'max-len': [ "error", { "code": 140 } ],
-            'indent': [ 'error', 4 ],
-            quotes: [ 'error', 'single' ]
-        }
+// declare global variables
+var fs;
+var path;
+var config;
+
+/**
+ * initialise sorter configuration
+ * 
+ * @param {targetPath} req
+ */
+function configure(targetPath) {
+    // use file system & path modules
+    fs = require('fs');
+    path = require('path');
+
+    config = {};
+
+    // set target path
+    config.targetPath = path.dirname(targetPath);
+
+    // set project path
+    config.projectPath = getProjectPath();
+
+    // set eslint options
+    var linterConfig = getLinterConfig();
+
+    // set indentation from eslint
+    config.indent = getIndentation(linterConfig);
+
+    // set maximum line length
+    config.maxLineLength = getMaxLineLength(linterConfig);
+
+    // set quotemark from eslint
+    config.quote = getQuote(linterConfig);
+
+    // set tsconfig options
+    config.ts = getTsConfig();
+
+    // set import separator comment templates
+    config.comments = getCommentTemplates();
+
+    // set sort options
+    config.sortOptions = {
+        sensitivity: 'accent',
+        ignorePuncutation: true,
+        numeric: true
     };
 }
 
-// retrieve indentation from eslintrc.js
-var indent = getIndentation();
-
-// check quotemark
-var quote = getQuote();
-
-// retrieve base url and aliases
-var baseUrl;
-var aliases;
-
-var configPath;
-if (fs.existsSync(projectPath + 'tsconfig.base.json')) {
-    configPath = projectPath + 'tsconfig.base.json';
-} else if (fs.existsSync(projectPath + 'tsconfig.json')) {
-    configPath = projectPath + 'tsconfig.json';
-}
-
-// if tsconfig(.base).json exists
-if (!!configPath) {
-    var options = require(configPath).compilerOptions;
-    baseUrl = options.baseUrl || 'src';
-    aliases = (Object.keys(options.paths) || [])
-        .filter(
-            (alias) => alias.substr(alias.length - 2) === '/*'
-        )
-        .map(
-            (alias) => alias.substr(0, alias.length - 2)
-        );
-// otherwise assume it's a testing scenario
-} else {
-    baseUrl = 'test';
-    aliases = ['some-library'];
-}
-
-// import import separator comments
-var comment = require('./comments');
-// declare global end of line character & comments
-var EOLChar;
-var comments;
-var sortOptions = {
-    sensitivity: 'accent',
-    ignorePuncutation: true,
-    numeric: true
-};
-
-module.exports.run = main;
-module.exports.parseInput = parseInput;
-
 /**
- * check indentation configuration in eslintrc.js
+ * check project path
  *
  * @return string
  */
-function getIndentation() {
+function getProjectPath() {
+    var currentPath = config.targetPath;
+    var projectPath;
+    while (!projectPath && fs.existsSync(currentPath)) {
+        if (fs.existsSync(currentPath + '/package.json')) {
+            projectPath = currentPath;
+        } else {
+            var newPathArray = currentPath.split(path.sep);
+            newPathArray.pop();
+            currentPath = newPathArray.join(path.sep);
+        }
+    }
+    if (!projectPath) { throw new Error('Node project not found.'); }
+    return projectPath;
+}
+
+/**
+ * check eslint
+ *
+ * @return obj
+ */
+function getLinterConfig() {
+    var linterConfig;
+    if (fs.existsSync(config.projectPath + '/.eslintrc.js')) {
+        linterConfig = require(config.projectPath + '/.eslintrc.js');
+    } else if (fs.existsSync(config.projectPath + '/.eslintrc.json')) {
+        linterConfig = require(config.projectPath + '/.eslintrc.json');
+    } else if (fs.existsSync(config.projectPath + '/.eslintrc.yml')) {
+        let fileContents = fs.readFileSync(config.projectPath + '/.eslintrc.yml', 'utf8');
+        var parser = require('js-yaml');
+        linterConfig = parser.load(fileContents);
+    } else {
+        return {
+            overrides: [
+              {
+                files: [
+                    "*.ts"
+                ],
+                rules: {
+                    'max-len': ["error", { "code": 140 }],
+                    'indent': ['error', 4],
+                    quotes: ['error', 'single']
+                }
+              }
+            ]
+        };
+    }
+    linterConfig = linterConfig.overrides.find(
+        c => c.files.indexOf('*.ts') > -1
+    )
+    return linterConfig;
+}
+
+/**
+ * check indentation configuration in eslint
+ *
+ * @param {linterConfig} req
+ * @return string
+ */
+function getIndentation(linterConfig) {
     var indentationRule = linterConfig.rules['@typescript-eslint/indent'] || linterConfig.rules.indent;
     if (!indentationRule || !indentationRule.length) {
         throw new Error('No indentation rule found in eslintrc.js.');
     }
     var indent;
-    if (typeof indentationRule === 'string' || indentationRule[0] !== 'error') {
+    if (typeof indentationRule === 'string') {
         indent = ' '.repeat(4);
     } else if (indentationRule[1] === 'tab') {
         indent = '\t';
@@ -94,11 +130,22 @@ function getIndentation() {
 }
 
 /**
- * check quotemark configuration in eslintrc.js
+ * check maximum line length in eslint
  *
+ * @param {linterConfig} req
  * @return string
  */
-function getQuote() {
+function getMaxLineLength(linterConfig) {
+    return linterConfig.rules['max-len'] || 80;
+}
+
+/**
+ * check quotemark configuration in eslint
+ *
+ * @param {linterConfig} req
+ * @return string
+ */
+function getQuote(linterConfig) {
     var quoteRule = linterConfig.rules.quotes;
     if (!quoteRule || quoteRule[0] !== 'error') {
         return;
@@ -110,12 +157,82 @@ function getQuote() {
 }
 
 /**
+ * check tsconfig(.*).json
+ *
+ * @return obj
+ */
+function getTsConfig() {
+    var currentPath = config.targetPath;
+    var tsConfigs = [];
+    while (!tsConfigs.length && currentPath.length >= config.projectPath.length && fs.existsSync(currentPath)) {
+        if (fs.existsSync(currentPath + '/tsconfig.app.json')) {
+            tsConfigs.push(require(currentPath + '/tsconfig.app.json').compilerOptions);
+        } else if (fs.existsSync(currentPath + '/tsconfig.lib.json')) {
+            tsConfigs.push(require(currentPath + '/tsconfig.lib.json').compilerOptions);
+        } else if (fs.existsSync(currentPath + '/tsconfig.base.json')) {
+            tsConfigs.push(require(currentPath + '/tsconfig.base.json').compilerOptions);
+        } else if (fs.existsSync(currentPath + '/tsconfig.json')) {
+            tsConfigs.push(require(currentPath + '/tsconfig.json').compilerOptions);
+        } else {
+            var newPathArray = currentPath.split(path.sep);
+            newPathArray.pop();
+            currentPath = newPathArray.join(path.sep);
+        }
+    }
+    // error if tsconfig is missing
+    if (!tsConfigs.length) { throw new Error('TS config not found.'); }
+    // reverse order so inner config can override outer config
+    var tsConfigs = tsConfigs.reverse();
+    var tsConfig = {
+        baseUrl: 'src',
+        paths: {}
+    };
+    tsConfigs.forEach(
+        _tsConfig => {
+            if (!!_tsConfig) {
+                if (!!_tsConfig.baseUrl) {
+                    tsConfig.baseUrl = _tsConfig.baseUrl;
+                }
+                if (!!_tsConfig.paths) {
+                    Object.assign(tsConfig.paths, _tsConfig.paths || {});
+                }
+            }
+        }
+    );
+    return tsConfig;
+}
+
+/**
+ * recursively traverse directory structure and call processFile on each file
+ *
+ * @return obj
+ */
+function getCommentTemplates() {
+    var comments;
+    if (fs.existsSync(config.projectPath + '/comments.json')) {
+        comments = require(projectPath + '/comments.json');
+    } else {
+        comments = {
+            angular: ['Angular imports', /@angular/]
+        }
+    }
+
+    if (!comments.application) {
+        comments.application = ['Application imports', /^\.\.?\//];
+    }
+    if (!comments.other) {
+        comments.other = ['Other imports', null];
+    }
+    return comments;
+}
+
+/**
  * recursively traverse directory structure and call processFile on each file
  *
  * @param {directory} req
  */
 function main(directory) {
-    directory = getRelativePath(directory);
+    configure(directory);
     fs.readdir(directory, (err, files) => {
         var stats = fs.lstatSync(directory);
         if (stats.isDirectory()) {
@@ -144,8 +261,8 @@ function main(directory) {
 function processFile(directory, fileName) {
     if (fileName.endsWith('.ts') && !fileName.endsWith('.d.ts')) {
         fs.readFile(directory + path.sep + fileName, 'utf8', function (error, data) {
-            if (error) {
-                throw (error);
+            if (!!error) {
+                throw error;
             }
             var fileContents = parseInput(data);
             if (data === fileContents) {
@@ -155,7 +272,7 @@ function processFile(directory, fileName) {
                     if (err) {
                         return console.log(err);
                     }
-                    console.log('File ' + directory + path.sep + fileName + ' cleaned');
+                    console.log('Import statements have been sorted in ' + directory + path.sep + fileName);
                 });
             }
         });
@@ -172,14 +289,13 @@ function parseInput(input) {
     // initialise variables
     var importLines = [];
     var nonImportLines = [];
-    comments = {};
     //	check and store EOL character
-    EOLChar = getNewLine(input);
+    config.EOLChar = getNewLine(input);
     // split imput and get last import line index
-    var lines = input.split(EOLChar);
+    var lines = input.split(config.EOLChar);
     var importEnd = getImportEnd(lines);
     // get comments, import lines and non-import lines
-    getComments(lines, importEnd, comments);
+    config.otherComments = getComments(lines, importEnd);
     if (importEnd === -1) {
         return input;
     } else {
@@ -189,7 +305,7 @@ function parseInput(input) {
         pickNonImportLines(lines, importEnd + 1, nonImportLines);
         // sort import lines and return concatenated file contents
         importLines = sortImportLines(importLines);
-        return importLines.concat(nonImportLines).join(EOLChar);
+        return importLines.concat(nonImportLines).join(config.EOLChar);
     }
 }
 
@@ -203,7 +319,7 @@ function getImportEnd(lines) {
     var importEnd = -1;
     for (var i = 0; i < lines.length; i++) {
         var trimmedLine = lines[i].trim();
-        if (trimmedLine.replace(EOLChar, '').length && (
+        if (trimmedLine.replace(config.EOLChar, '').length && (
             // match 'import '
             trimmedLine.indexOf('import ') === 0 ||
             // match 'export ' when it's not a new declaration
@@ -238,16 +354,19 @@ function getImportEnd(lines) {
  *
  * @param {lines} req
  * @param {importEnd} req
- * @param {comments} req
  * @return obj
  */
-function getComments(lines, importEnd, comments) {
+function getComments(lines, importEnd) {
+    var comments = {};
     // loop over import lines and collect comments
     for (var i = 0; i < importEnd + 1; i++) {
         if (lines[i].trim().indexOf('//') === 0) {
-            if (comment.angular !== lines[i].trim() &&
-                comment.application !== lines[i].trim() &&
-                comment.thirdParty !== lines[i].trim()
+            if (
+                !Object.keys(config.comments)
+                    .map(group => config.comments[group])
+                    .some(
+                        comment => comment[0].indexOf(lines[i].substring(2).trim()) > -1
+                    )
             ) {
                 comments[i + 1] = lines[i].trim();
             }
@@ -262,7 +381,7 @@ function getComments(lines, importEnd, comments) {
                 i++;
                 commentUnit.push(lines[i]);
             }
-            comments[i + 1] = commentUnit.join(EOLChar);
+            comments[i + 1] = commentUnit.join(config.EOLChar);
         }
     }
     return comments;
@@ -313,7 +432,7 @@ function pickNonImportLines(lines, importEnd, nonImportLines) {
         nonImportLines.push(lines[i]);
     }
     if (!!nonImportLines.length && !!nonImportLines[0].trim().length) {
-        nonImportLines.unshift(EOLChar);
+        nonImportLines.unshift(config.EOLChar);
     }
 }
 
@@ -326,18 +445,17 @@ function pickNonImportLines(lines, importEnd, nonImportLines) {
  */
 function sortImportLines(importLines) {
     // initialise import groups
-    var importGroups = {
-        angular: [],
-        application: [],
-        thirdParty: []
-    };
+    var importGroups = {};
+    Object.keys(config.comments).forEach(
+        group => importGroups[group] = []
+    );
     // loop over import lines
     for (var i = 0; i < importLines.length; i++) {
         var localQuote;
-        if (!!quote) {
+        if (!!config.quote) {
             // fix quotation marks
-            importLines[i][0] = importLines[i][0].replace(/["']/g, quote);
-            localQuote = quote;
+            importLines[i][0] = importLines[i][0].replace(/["']/g, config.quote);
+            localQuote = config.quote;
         } else {
             // find line-specific quotation mark
             localQuote = importLines[i][0].search('"') > -1 ? '"' : "'";
@@ -346,62 +464,75 @@ function sortImportLines(importLines) {
         // sort features within and limit their length if necessary
         importLines[i][0] = sortFeatures(importLines[i][0]);
         importLines[i][0] = limitLine(importLines[i][0]);
-        // sort them into three categories
-        var match;
+        // sort them into categories
+        var module;
+        var sorted = false;
         var quoteSearch = new RegExp(localQuote + '.*' + localQuote);
         if (importLines[i][0].search(quoteSearch) > -1) {
-            match = importLines[i][0].match(quoteSearch)[0].replace(/["']/g, "");
+            module = importLines[i][0].match(quoteSearch)[0].replace(/["']/g, "");
         }
-        if (match.substring(0, 8) == '@angular') {
-            importGroups.angular.push(importLines[i]);
-        } else if (
-            match.substring(0, 1) == '.' ||
-            aliases.indexOf(match.split(path.sep)[0]) > -1 ||
-            checkApplicationPath(match)
-        ) {
-            importGroups.application.push(importLines[i]);
-        } else {
-            importGroups.thirdParty.push(importLines[i]);
+        Object.keys(config.comments).forEach(
+            group => {
+                if (!sorted && !!config.comments[group][1] && !!module.match(config.comments[group][1])) {
+                    importGroups[group].push(importLines[i]);
+                    sorted = true;
+                }
+            }
+        );
+        // if not matched with custom groups
+        if (!sorted) {
+            // sort into application imports
+            if (
+                Object.keys(config.ts.paths)
+                    .map(p => p.replace('*', ''))
+                    .some(p => p.indexOf(module.split(path.sep)[0]) > -1) ||
+                checkApplicationPath(module)
+            ) {
+                importGroups.application.push(importLines[i]);
+            // or other imports
+            } else {
+                importGroups.other.push(importLines[i]);
+            }
         }
     }
     // sort lines within categories and add category comment
-    ['angular', 'application', 'thirdParty'].forEach(function (groupName) {
+    Object.keys(config.comments).forEach(function (groupName) {
         if (importGroups[groupName].length) {
             importGroups[groupName].sort(function (a, b) {
                 // sort based on non-white-space version of strings & on globally defined sorting options
-                return a[0].replace(/\s/g, '').localeCompare(b[0].replace(/\s/g, ''), undefined, sortOptions);
+                return a[0].replace(/\s/g, '').localeCompare(b[0].replace(/\s/g, ''), undefined, config.sortOptions);
             });
-            importGroups[groupName].unshift([comment[groupName], -1]);
+            importGroups[groupName].unshift([`//${config.indent}${config.comments[groupName][0]}`, -1]);
         }
     });
     // get an array of import line indices
     var lineNumbers = getLineNumbers(importLines);
+    
     // concatenate import groups with readded comments
-    return importGroups.angular.map(function (line) {
-        return readdComment(line, lineNumbers);
-    })
-        .concat(importGroups.application.map(function (line) {
-            return readdComment(line, lineNumbers);
-        }))
-        .concat(importGroups.thirdParty.map(function (line) {
-            return readdComment(line, lineNumbers)
-        }));
+    var sortedImports = [];
+    Object.keys(importGroups).forEach(
+        group => sortedImports = [
+            ...sortedImports,
+            ...importGroups[group].map(function (line) { return readdComment(line, lineNumbers); })
+        ]
+    );
+    return sortedImports;
 }
 
 
 /**
  * Check if import source is within the application
  *
- * @param {line} req
+ * @param {url} req
  * @return boolean
  */
 function checkApplicationPath(url) {
     var directory = url.substring(0, url.lastIndexOf(path.sep));
     var pathArray;
     if (!directory || !directory.length) {
-        pathArray = (projectPath + baseUrl + path.sep + directory + url + '.ts').split(path.sep);
+        pathArray = (config.projectPath + config.ts.baseUrl + path.sep + directory + url + '.ts').split(path.sep);
     } else {
-        pathArray = (projectPath + baseUrl + path.sep + directory).split(path.sep);
+        pathArray = (config.projectPath + config.ts.baseUrl + path.sep + directory).split(path.sep);
     }
     var cleanPathArray = [];
     pathArray.forEach(function (item, index) {
@@ -432,7 +563,7 @@ function sortFeatures(line) {
         }
         features = features.filter(function (feature) {
             return feature.trim().length > 0;
-        }).sort(function (a, b) { return a.localeCompare(b, undefined, sortOptions) });
+        }).sort(function (a, b) { return a.localeCompare(b, undefined, config.sortOptions) });
         line = start + '{ ' + features.join(', ') + ' }' + end;
     }
     return line;
@@ -454,8 +585,8 @@ function readdComment(line, lineNumbers) {
         var lastImportLineNumber = lineNumbers[lineNumbers.indexOf(line[1]) - 1] || 0;
         for (var i = line[1]; i > lastImportLineNumber; i--) {
             // if comment exists between the two, prepend line with it
-            if (!!comments[i]) {
-                line[0] = comments[i] + EOLChar + line[0];
+            if (!!config.otherComments[i]) {
+                line[0] = config.otherComments[i] + config.EOLChar + line[0];
             }
         }
     }
@@ -483,28 +614,13 @@ function getLineNumbers(importLines) {
  * @return string
  */
 function limitLine(line) {
-    var maxLineLength = linterConfig.rules['max-len'];
-    if (maxLineLength[0] === 'error' && line.length > maxLineLength[1].code) {
+    if (config.maxLineLength[0] === 'error' && line.length > config.maxLineLength[1].code) {
         line = line
-            .replace(/{\s*/, '{' + EOLChar + indent)
-            .replace(/\s*}/, EOLChar + '}')
-            .replace(/,\s*/g, ',' + EOLChar + indent);
+            .replace(/{\s*/, '{' + config.EOLChar + config.indent)
+            .replace(/\s*}/, config.EOLChar + '}')
+            .replace(/,\s*/g, ',' + config.EOLChar + config.indent);
     }
     return line;
-}
-
-/**
- * return OS-specific path and trim project path from its beginning
- *
- * @param {directory} req
- * @return string
- */
-function getRelativePath(directory) {
-    directory = path.normalize(directory);
-    if (path.normalize(directory).indexOf(projectPath) === 0) {
-        directory = directory.split(projectPath)[1];
-    }
-    return directory;
 }
 
 /**
@@ -518,3 +634,7 @@ function getNewLine(fileContents) {
     else if (fileContents.indexOf('\n') > -1) { return '\n'; }
     else if (fileContents.indexOf('\r') > -1) { return '\r'; }
 }
+
+module.exports = {
+    configure, main, parseInput
+};

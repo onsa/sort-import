@@ -16,7 +16,7 @@ import {
     QApplicationModule,
     AApplicationModule,
     NApplicationModule
-} from 'test-file.1';
+} from './test-file.2';
 
 export class SomeClass {
 

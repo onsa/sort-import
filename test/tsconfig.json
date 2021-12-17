@@ -1,0 +1,9 @@
+{
+    "dummy file": "for testing",
+    "compilerOptions": {
+        "baseUrl": "./",
+        "paths": {
+            "some-library/*": [ "../projects/some-library/*" ]
+        }
+    }
+}

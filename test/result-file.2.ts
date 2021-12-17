@@ -6,13 +6,13 @@ export { CAngularModule, DAngularModule, LAngularModule } from '@angular/other-m
 //  Application imports
 // comment #5
 export {
-    AApplicationModule,
-    EApplicationModule,
-    HApplicationModule,
-    NApplicationModule,
-    OApplicationModule,
-    QApplicationModule
-} from 'test-file.1';
+  AApplicationModule,
+  EApplicationModule,
+  HApplicationModule,
+  NApplicationModule,
+  OApplicationModule,
+  QApplicationModule
+} from './test-file.2';
 // comment #2
 export { DApplicationModule } from './test-file.1';
 export SApplicationModule from './test-file.1';

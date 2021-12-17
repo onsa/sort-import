@@ -1,0 +1,15 @@
+{
+    "dummy file": "for testing",
+    "overrides": [
+        {
+            "files": [
+                "*.ts"
+            ],
+            "rules": {
+                "max-len": ["error", { "code": 140 }],
+                "indent": ["error", 2],
+                "quotes": ["error", "single"]
+            }
+        }
+    ]
+}

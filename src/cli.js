@@ -11,5 +11,5 @@ if (args.length === 0) {
 } else if(!fs.existsSync(args[0])) {
   throw new Error('No such file or directory: ' + args[0]);
 } else {
-	sortImports.run(args[0]);
+	sortImports.main(args[0]);
 }
